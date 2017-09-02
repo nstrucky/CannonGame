@@ -1,8 +1,6 @@
-package com.ventoray.cannongame.elements;
+package com.ventoray.cannongame;
 
 import android.graphics.Canvas;
-
-import com.ventoray.cannongame.CannonView;
 
 /**
  * Created by nicks on 9/1/2017.

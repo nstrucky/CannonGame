@@ -1,6 +1,4 @@
-package com.ventoray.cannongame.elements;
-
-import com.ventoray.cannongame.CannonView;
+package com.ventoray.cannongame;
 
 /**
  *

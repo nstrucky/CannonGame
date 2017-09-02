@@ -1,7 +1,11 @@
 package com.ventoray.cannongame;
 
 import android.app.Activity;
+import android.app.Dialog;
+import android.app.DialogFragment;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
@@ -9,13 +13,14 @@ import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.SoundPool;
 import android.os.Build;
+import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.SparseIntArray;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-
-import com.ventoray.cannongame.elements.Blocker;
-import com.ventoray.cannongame.elements.Target;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -171,20 +176,9 @@ public class CannonView extends SurfaceView implements SurfaceHolder.Callback {
         textPaint.setAntiAlias(true);
     }
 
-    @Override
-    public void surfaceCreated(SurfaceHolder holder) {
 
-    }
 
-    @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-
-    }
 
     /**************************************************************
      *  newGame()
@@ -259,5 +253,248 @@ public class CannonView extends SurfaceView implements SurfaceHolder.Callback {
 
         hideSystemBars();
 
+    }
+
+
+    private void updatePositions(double elapsedTimeMS) {
+        double interval  = elapsedTimeMS / 1000.0; //converted to seconds
+
+        //update cannonball's position if it is on the screen
+        if (cannon.getCannonBall() != null) {
+            cannon.getCannonBall().update(interval);
+        }
+
+        blocker.update(interval); //update the blocker's position
+
+        for (GameElement target : targets) {
+            target.update(interval); // update the target's position
+        }
+
+        timeLeft -= interval; //subtract from time left
+
+        // if the timer reached zero
+        if (timeLeft <= 0) {
+            timeLeft = 0.0;
+            gameOver = true;
+            cannonThread.setRunning(false); // terminate thread
+            showGameOverDialog(R.string.lose);
+        }
+
+        // if all pieces have been hit
+        if (targets.isEmpty()) {
+            cannonThread.setRunning(false); //terminate thread
+            showGameOverDialog(R.string.win);
+            gameOver = true;
+        }
+
+
+    }
+
+
+    public void alignAndFireCannonball(MotionEvent event) {
+        Point touchPoint = new Point((int) event.getX(), (int) event.getY());
+
+        // compute the touch's distance from the center of the screen
+        //on the y-axis
+        double centerMinusY = (screenHeight / 2 - touchPoint.y);
+        double angle = 0; //initialize angle to 0
+
+        // calculate the angle the barrel makes with the horizontal
+        angle = Math.atan2(touchPoint.x, centerMinusY);
+
+        // point the barrel at the point where the screen was touched
+        cannon.align(angle);
+
+        // fire Cannonball if there is not already a Cannonball on screen
+        if (cannon.getCannonBall() == null ||
+                !cannon.getCannonBall().isOnScreen()) {
+            cannon.fireCannonball();;
+            ++shotsFired;
+        }
+    }
+
+
+
+    private void showGameOverDialog(final int messageId) {
+        final DialogFragment gameResult = new DialogFragment() {
+            // create an AlertDialog and return it
+
+            @Override
+            public Dialog onCreateDialog(Bundle savedInstanceState) {
+                AlertDialog.Builder builder =
+                        new AlertDialog.Builder(getActivity());
+                builder.setTitle(getResources().getString(messageId));
+                builder.setMessage(getResources().getString(R.string.results_format,
+                        shotsFired, totalElapsedtime));
+                builder.setPositiveButton(R.string.reset_game, new DialogInterface.OnClickListener() {
+                    // called when "Reset Game" Button is pressed
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialogIsDisplayed = false;
+                        newGame();
+
+                    }
+                });
+                return builder.create();
+            }
+        };
+
+        //I think we have to do it this way because it is a SurfaceView, not activity
+        // in GUI thread, use FragmentManager to display the DialogFragment
+        activity.runOnUiThread(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        showSystemBars(); //exit immersive mode
+                        dialogIsDisplayed = true;
+                        gameResult.setCancelable(false); // modal dialog
+                        gameResult.show(activity.getFragmentManager(), "results");
+                    }
+                }
+        );
+    }
+
+    /**
+     * draws the game to the given Canvas
+     * @param canvas
+     */
+    public void drawGameElements(Canvas canvas) {
+        // clear the background
+        canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(),
+                backgroundPaint);
+
+        // display time remaining
+        canvas.drawText(getResources().getString(
+                R.string.time_remaining_format, timeLeft), 50, 100,
+                textPaint);
+
+
+        // draw the GameElements
+        if (cannon.getCannonBall() != null &&
+                cannon.getCannonBall().isOnScreen()) {
+            cannon.getCannonBall().draw(canvas);
+        }
+
+        blocker.draw(canvas);
+
+        for (GameElement target : targets) {
+            target.draw(canvas);
+        }
+    }
+
+    /**
+     *  checks if the ball collides with the Blocker or any of the Targets
+     *  and handles the collisions
+     */
+    public void testForCollisions() {
+        //remove any of the targets that the Cannonball
+        // collides with
+        if (cannon.getCannonBall() !=  null &&
+                cannon.getCannonBall().isOnScreen()) {
+            for (int n = 0; n < targets.size(); n++) {
+                if (cannon.getCannonBall().collidesWith(targets.get(n))) {
+                    targets.get(n).playSound();
+                    // add hit rewards time to remaining time
+                    timeLeft += targets.get(n).getHitReward();
+                    cannon.removeCannonball(); // remove Cannonball from game
+                    targets.remove(n); // remove the Target that was hit
+                    --n; // ensures that we don't skip testing new target n
+                    break;
+                }
+            }
+
+
+        } else { // remove the Cannonball if it should not be on the screen
+            cannon.removeCannonBall();
+        }
+
+        // check if ball collides with blocker
+        if (cannon.getCannonBall() != null &&
+                cannon.getCannonBall().collidesWith(blocker)) {
+            blocker.playSound();
+            cannon.getCannonBall().reverseVelocityX();
+            timeLeft -= blocker.getMissPenalty();
+        }
+    }
+
+    /**
+     * stops the game: called by CannonGameFragment's onPause method
+     */
+    public void stopGame() {
+        if (cannonThread != null)
+            cannonThread.setRunning(false);
+    }
+
+    /**
+     * release resources: called by CannonGame's onDestroy method
+     */
+    public void releaseResources() {
+        soundPool.release();
+        soundPool = null;
+    }
+
+
+    /**
+     * called when surface is first created
+     * @param holder
+     */
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+        if (!dialogIsDisplayed) {
+            newGame(); // set up and start a new game ... also called in dialog button
+            cannonThread = new CannonThread(holder);
+            cannonThread.setRunning(true); // start game running
+            cannonthread.start(); // start the game loop thread
+        }
+    }
+
+    /**
+     * called when surface changes size
+     * @param holder
+     * @param format
+     * @param width
+     * @param height
+     */
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {}
+
+    /**
+     * called when the surface is destroyed
+     * @param holder
+     */
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder) {
+        // ensure that the thread terminates properly
+        boolean retry = true;
+        cannonThread.setRunning(false);
+
+        while (retry) {
+            try {
+                cannonThread.join(); // wait for cannonThread to finish
+                retry = false;
+            } catch (InterruptedException e) {
+                Log.e(LOG_TAG, "Thread interrupted", e);
+            }
+        }
+    }
+
+
+    /**
+     * called when the user touches the screen in this activity
+     * @param event
+     * @return
+     */
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        // get int representing the type of action which caused this event
+        int action = event.getAction();
+
+        //the user touched the screen or dragged along the screen
+        if (action == MotionEvent.ACTION_DOWN ||
+                action == MotionEvent.ACTION_MOVE) {
+            // fire the cannonball toward the touch point
+            alignAndFireCannonball(event);
+        }
+        return true;
     }
 }

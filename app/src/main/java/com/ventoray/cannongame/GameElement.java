@@ -1,4 +1,4 @@
-package com.ventoray.cannongame.elements;
+package com.ventoray.cannongame;
 
 import android.graphics.Canvas;
 import android.graphics.Paint;
