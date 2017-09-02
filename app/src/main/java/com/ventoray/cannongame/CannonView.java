@@ -64,7 +64,7 @@ public class CannonView extends SurfaceView implements SurfaceHolder.Callback {
     // text size 1/18 of screen width
     public static final double TEXT_SIZE_PERCENT = 1.0 / 10;
 
-    private CannonBallThread cannonThread; // controls the game loop
+    private CannonThread cannonThread; // controls the game loop
 
     private Activity activity; //to display the Game Over dialog in GUI thread
      private boolean dialogIsDisplayed = false;
@@ -177,12 +177,9 @@ public class CannonView extends SurfaceView implements SurfaceHolder.Callback {
     }
 
 
-
-
-
-    /**************************************************************
-     *  newGame()
-     **************************************************************/
+    /**
+     * initializes game
+     */
     public void newGame() {
         cannon = new Cannon(this,
                 (int) (CANNON_BASE_RADIUS_PERCENT * screenHeight),
@@ -250,9 +247,7 @@ public class CannonView extends SurfaceView implements SurfaceHolder.Callback {
             cannonThread = new CannonThread(getHolder());
             cannonThread.start();
         }
-
         hideSystemBars();
-
     }
 
 
@@ -444,7 +439,7 @@ public class CannonView extends SurfaceView implements SurfaceHolder.Callback {
             newGame(); // set up and start a new game ... also called in dialog button
             cannonThread = new CannonThread(holder);
             cannonThread.setRunning(true); // start game running
-            cannonthread.start(); // start the game loop thread
+            cannonThread.start(); // start the game loop thread
         }
     }
 
@@ -497,4 +492,70 @@ public class CannonView extends SurfaceView implements SurfaceHolder.Callback {
         }
         return true;
     }
+
+
+
+
+
+    
+
+
+
+
+    /******************************************************************************
+     * Created by Nick on 9/2/2017.
+     *
+     * Thread class to control the game loop
+     ******************************************************************************/
+
+    private class CannonThread extends Thread {
+
+        private SurfaceHolder surfaceHolder; //for manipulating canvas
+        private boolean threadIsRunning = true; // running by default
+
+        public CannonThread(SurfaceHolder holder) {
+            surfaceHolder = holder;
+            setName("CannonThread"); // why do we do this?
+        }
+
+        public void setRunning(boolean running) {
+            threadIsRunning = running;
+        }
+
+        /**
+         * controls the game loop
+         */
+        @Override
+        public void run() {
+            Canvas canvas = null; // used for drawing
+            long previousFrameTime = System.currentTimeMillis();
+
+            while (threadIsRunning) {
+                try {
+                    // get Canvas for exclusive drawing from this thread
+                    canvas = surfaceHolder.lockCanvas(null);
+
+                    // lock the surfaceHolder for drawing
+                    synchronized (surfaceHolder) {
+                        long currentTime = System.currentTimeMillis();
+                        double elapsedTimeMS = currentTime - previousFrameTime;
+                        updatePositions(elapsedTimeMS); // update game state
+                        testForCollisions(); // test for GameElement collisions
+                        drawGameElements(canvas); // draw using canvas
+                        previousFrameTime = currentTime; // update previous time
+                    }
+                } finally {
+                    // display canvas's contents on the CannonView
+                    // and enable other threads to use the Canvas
+                    if (canvas != null) {
+                        surfaceHolder.unlockCanvasAndPost(canvas);
+                    }
+                }
+            }
+
+        }
+    }
+
 }
+
+
