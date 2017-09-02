@@ -72,4 +72,12 @@ public class Cannon {
                 (int) baseRadius, paint);
     }
 
+    public CannonBall getCannonBall() {
+        return cannonBall;
+    }
+
+    public removeCannonBall() {
+        cannonBall = null;
+    }
+
 }
