@@ -1,6 +1,7 @@
 package com.ventoray.cannongame;
 
 import android.graphics.Canvas;
+import android.graphics.Rect;
 
 /**
  * Created by nicks on 9/1/2017.
@@ -23,6 +24,10 @@ public class CannonBall extends GameElement {
 
     public int getRadius() {
         return (shape.right - shape.left) / 2;
+    }
+
+    public boolean collidesWith(GameElement element) {
+        return (Rect.intersects(shape, element.shape) && velocityX > 0);
     }
 
     public boolean isOnScreen() {

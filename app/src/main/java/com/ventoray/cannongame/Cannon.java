@@ -76,7 +76,7 @@ public class Cannon {
         return cannonBall;
     }
 
-    public removeCannonBall() {
+    public void removeCannonBall() {
         cannonBall = null;
     }
 

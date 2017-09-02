@@ -21,6 +21,7 @@ import android.util.SparseIntArray;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -391,7 +392,7 @@ public class CannonView extends SurfaceView implements SurfaceHolder.Callback {
                     targets.get(n).playSound();
                     // add hit rewards time to remaining time
                     timeLeft += targets.get(n).getHitReward();
-                    cannon.removeCannonball(); // remove Cannonball from game
+                    cannon.removeCannonBall(); // remove Cannonball from game
                     targets.remove(n); // remove the Target that was hit
                     --n; // ensures that we don't skip testing new target n
                     break;
@@ -494,8 +495,34 @@ public class CannonView extends SurfaceView implements SurfaceHolder.Callback {
     }
 
 
+    /**
+     *  Hide system bars and app bar
+     */
+    private void hideSystemBars() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                            View.SYSTEM_UI_FLAG_FULLSCREEN |
+                            View.SYSTEM_UI_FLAG_IMMERSIVE
+            );
+        }
+    }
 
-
+    /**
+     *  show system bars and app bar
+     */
+    private void showSystemBars() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            );
+        }
+    }
 
     
 
