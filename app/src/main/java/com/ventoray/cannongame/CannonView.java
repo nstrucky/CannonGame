@@ -373,6 +373,8 @@ public class CannonView extends SurfaceView implements SurfaceHolder.Callback {
 
         blocker.draw(canvas);
 
+        cannon.draw(canvas);
+
         for (GameElement target : targets) {
             target.draw(canvas);
         }
